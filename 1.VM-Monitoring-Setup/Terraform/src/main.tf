@@ -33,6 +33,12 @@ module "compute" {
 
   admin_username = var.admin_username
   admin_password = var.admin_password
+  
+  dcr_id = module.monitoring.dcr_id
+
+  depends_on = [
+    module.networking
+  ]
 }
 
 #Llamada a modulo "monitoring"
@@ -41,8 +47,9 @@ module "monitoring" {
   rg_name  = module.resource_group.rg_name
   location = module.resource_group.rg_location
 
-  vm_id    = module.compute.vm_id
-  vm_name  = var.vm_name
+  vm_id = module.compute.vm_id
+  vm_name = var.vm_name
+  ama_extension_id = module.compute.ama_extension_id
 
   law_name          = var.law_name
   dcr_name          = var.dcr_name

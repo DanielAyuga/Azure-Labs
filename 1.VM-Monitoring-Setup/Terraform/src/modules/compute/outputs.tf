@@ -9,3 +9,7 @@ output "public_ip" {
 output "nic_id" {
   value = azurerm_network_interface.nic.id
 }
+
+output "ama_extension_id" {
+  value = azurerm_virtual_machine_extension.ama.id
+}

@@ -7,26 +7,17 @@ resource "azurerm_log_analytics_workspace" "law" {
   retention_in_days   = 30
 }
 
-resource "azurerm_virtual_machine_extension" "ama" {
-  name                 = "${var.vm_name}-ama"
-  virtual_machine_id   = var.vm_id
-  publisher            = "Microsoft.Azure.Monitor"
-  type                 = "AzureMonitorWindowsAgent"
-  type_handler_version = "1.0"
-
-  settings = <<SETTINGS
-  {
-    "workspaceId": "${azurerm_log_analytics_workspace.law.workspace_id}"
-  }
-SETTINGS
-
-  protected_settings = <<PROTECTED
-  {
-    "workspaceKey": "${azurerm_log_analytics_workspace.law.primary_shared_key}"
-  }
-PROTECTED
+resource "time_sleep" "wait_for_law" {
+  depends_on = [azurerm_log_analytics_workspace.law]
+  create_duration = "30s"
 }
 
+resource "time_sleep" "wait_for_ama" {
+  depends_on = [
+    var.ama_extension_id
+  ]
+  create_duration = "45s"
+}
 
 #Data Rule Collection (DCR)
 resource "azurerm_monitor_data_collection_rule" "dcr" {
@@ -34,7 +25,11 @@ resource "azurerm_monitor_data_collection_rule" "dcr" {
   location            = var.location
   resource_group_name = var.rg_name
 
-  data_collection_endpoint_id = azurerm_monitor_data_collection_endpoint.dce.id
+  depends_on = [
+    azurerm_log_analytics_workspace.law,
+    time_sleep.wait_for_law,
+    time_sleep.wait_for_ama
+  ]
 
   destinations {
     log_analytics {
@@ -44,57 +39,41 @@ resource "azurerm_monitor_data_collection_rule" "dcr" {
   }
 
   data_flow {
-    streams      = ["Microsoft-Perf", "Microsoft-Event"]
+    streams      = ["Microsoft-Perf", "Microsoft-Event", "Microsoft-Heartbeat"]
     destinations = ["lawdest"]
   }
 
   data_sources {
-    performance_counter {
-      name        = "perfCounters"
-      streams     = ["Microsoft-Perf"]
-      sampling_frequency_in_seconds = 60
-
-      counter_specifiers = [
-        "\\Processor(_Total)\\% Processor Time",
-        "\\Memory\\Available MBytes",
-        "\\LogicalDisk(_Total)\\% Free Space",
-      ]
-    }
 
     windows_event_log {
       name    = "eventLogs"
       streams = ["Microsoft-Event"]
-
       x_path_queries = [
         "Application!*[System[(Level=1 or Level=2)]]",
         "System!*[System[(Level=1 or Level=2)]]",
-        "Security!*[System[(EventID=4625)]]",
-        "Security!*[System[(EventID=4624)]]",
+        "Security!*[System[(EventID=4625 or EventID=4624)]]"
+      ]
+    }
+
+    performance_counter {
+      name        = "perfCounters"
+      streams     = ["Microsoft-Perf"]
+      sampling_frequency_in_seconds = 60
+      counter_specifiers = [
+        "\\Processor Information(_Total)\\% Processor Time",
+        "\\Memory\\Available Bytes",
+        "\\LogicalDisk(_Total)\\% Free Space"
       ]
     }
   }
 }
 
-#Añadimos un Data Collection Endpoint
-resource "azurerm_monitor_data_collection_endpoint" "dce" {
-  name                = "${var.vm_name}-dce"
-  location            = var.location
-  resource_group_name = var.rg_name
-}
-
-#Asociación DCR -> VM
-resource "azurerm_monitor_data_collection_rule_association" "dcr_assoc" {
-  name                    = "${var.vm_name}-dcr-assoc"
-  target_resource_id      = var.vm_id
-  data_collection_rule_id = azurerm_monitor_data_collection_rule.dcr.id
-}
-
-#Creación del Workbook
+# Workbook
 resource "azurerm_application_insights_workbook" "vm_workbook" {
   name                = uuid()
   resource_group_name = var.rg_name
   location            = var.location
-  display_name        = "var.vm_workbook_name"
+  display_name        = var.vm_workbook_name
   category            = "workbook"
 
   data_json = templatefile("${path.module}/workbook.json", {
@@ -102,7 +81,7 @@ resource "azurerm_application_insights_workbook" "vm_workbook" {
   })
 }
 
-#Action Group
+# Action Group
 resource "azurerm_monitor_action_group" "ag" {
   name                = var.action_group_name
   resource_group_name = var.rg_name
@@ -115,7 +94,7 @@ resource "azurerm_monitor_action_group" "ag" {
   }
 }
 
-#Alerta CPU>80%
+# CPU Alert
 resource "azurerm_monitor_metric_alert" "cpu_high" {
   name                = "${var.vm_name}-cpu-high"
   resource_group_name = var.rg_name
@@ -132,9 +111,13 @@ resource "azurerm_monitor_metric_alert" "cpu_high" {
     operator         = "GreaterThan"
     threshold        = 80
   }
+
+  action {
+    action_group_id = azurerm_monitor_action_group.ag.id
+  }
 }
 
-#Alerta 5 inicios de sesión fallidos
+# Failed Logins Alert
 resource "azurerm_monitor_scheduled_query_rules_alert" "failed_logins" {
   name                = "${var.vm_name}-failed-logins"
   resource_group_name = var.rg_name
@@ -142,6 +125,11 @@ resource "azurerm_monitor_scheduled_query_rules_alert" "failed_logins" {
   description         = "Detects 5 failed login attempts in 5 minutes"
   severity            = 2
   enabled             = true
+
+  depends_on = [
+  azurerm_monitor_data_collection_rule.dcr,
+  time_sleep.wait_for_law
+]
 
   frequency   = 5
   time_window = 5
@@ -166,14 +154,19 @@ resource "azurerm_monitor_scheduled_query_rules_alert" "failed_logins" {
   }
 }
 
-#Alerta Power State
+# Heartbeat Alert
 resource "azurerm_monitor_scheduled_query_rules_alert" "vm_powerstate" {
   name                = "${var.vm_name}-powerstate"
   resource_group_name = var.rg_name
   location            = var.location
-  description         = "Detecta si la VM deja de enviar Heartbeat"
+  description         = "Detects if the VM stops sending Heartbeat"
   severity            = 2
   enabled             = true
+
+  depends_on = [
+  azurerm_monitor_data_collection_rule.dcr,
+  time_sleep.wait_for_law
+]
 
   frequency   = 5
   time_window = 5

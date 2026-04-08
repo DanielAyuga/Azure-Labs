@@ -1,3 +1,11 @@
+variable "subscription_id" {
+  type = string
+}
+
+variable "tenant_id" {
+  type = string
+}
+
 variable "rg_name" {
   type        = string
   description = "Nombre del grupo de recursos"

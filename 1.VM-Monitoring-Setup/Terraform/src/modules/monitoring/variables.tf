@@ -6,14 +6,6 @@ variable "location" {
   type = string
 }
 
-variable "vm_id" {
-  type = string
-}
-
-variable "vm_name" {
-  type = string
-}
-
 variable "law_name" {
   type = string
 }
@@ -31,5 +23,17 @@ variable "alert_email" {
 }
 
 variable "vm_workbook_name" {
+  type = string
+}
+
+variable "vm_id" {
+  type = string
+}
+
+variable "vm_name" {
+  type = string
+}
+
+variable "ama_extension_id" {
   type = string
 }
