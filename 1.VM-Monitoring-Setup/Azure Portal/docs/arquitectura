@@ -1,10 +1,5 @@
 1.	Objetivo del proyecto
-Desplegar una máquina virtual en Azure y configurar un sistema básico de monitorización compuesto por:
-  ●	Métricas de rendimiento (CPU, memoria, disco)
-  ●	Eventos del sistema
-  ●	Intentos fallidos de inicio de sesión
-  ●	Alertas automáticas
-  ●	Visualización mediante Workbook
+Este proyecto despliega una VM en Azure y configura un sistema completo de monitorización basado en Azure Monitor, Log Analytics y Workbooks. Incluye métricas de rendimiento, eventos del sistema, detección de intentos fallidos de inicio de sesión, alertas automáticas y un panel visual para analizar el estado de la máquina.
 
 2.	Recursos:
   ●	Resource Group:
@@ -29,8 +24,8 @@ Desplegar una máquina virtual en Azure y configurar un sistema básico de monit
     alert-vmmon-law-critical-events - 5 intentos fallidos en 5 min
   ●	Alerta CPU
     alert-vmmon-cpu-high - CPU > 80% durante 5 min
-  ●	Alerta Resource Health:
-    alert-vmmon-vm-health - Estado crítico de la VM
+  ●	Alerta VM deallocate:
+    alert-vmmon-vm-deallocated - Estado crítico de la VM
       
 3.	Crear Resource Group y Log Analytics Workspace
   ●	Portal → Resource groups → Create
@@ -123,14 +118,12 @@ Captura: “05_03.dcr-vmmon-logs.png”
         ●	Application
           ○	Critical
           ○	Error
-          ○	Warning
         ●	Security
           ○	Audit success
           ○	Audit failure
           System
           ○	Critical
           ○	Error
-          ○	Warning
       ○	Destination
         ■	Add destination
         ■	Destination type: Azure Monitor Logs
@@ -192,8 +185,8 @@ Captura: “06_04.wb-vmmon-01(disk).png”
     5.	Eventos críticos y warnings
       ○	Consulta:
         Event
-        | where EventLevelName in ("Warning", "Error", "Critical")
-        | summarize count() by EventLevelName
+        | where EventID in (4624, 4625)
+        | summarize Count = count() by Status = case(EventID == 4624, "Correctos", "Fallidos")
       ○	Log Analytics Workspace: Cargar todas las suscripciones (Tu Log Analytics Workspace)
       ○	Visualización: Pie chart
       ○	Done editing
@@ -235,27 +228,7 @@ Captura: “07_01_03.alert-vmmon-cpu-high(action group_notifications).png”
 Captura: “07_01_04.alert-vmmon-cpu-high(details).png”
     ○	Create
 
-7.2. Alerta Resource Health
-  ●	Portal → Virtual machines → vm-vmmon-01 → Monitoring → Alerts → Create → Alert rule.
-    ○	Scope: vm-vmmon-01 (al crearlo desde el menú de máquinas virtuales se autocompleta)
-    ○	Condition
-      ■	Signal name: See all signals > Resource health
-      ■	Event status: Active
-      ■	Current resource status: Unavailable
-      ■	Previous resource status: Available
-      ■	Reason type: 3 selected (all)
-Captura: “07_02_01.alert-vmmon-vm-health(condition).png”
-    ○	Actions
-      ■	Select action group: ag-vmmon-alerts
-Captura: “07_02_02.alert-vmmon-vm-health(actions).png”
-    ○	Details
-      ■	Subscription: Tu subscripción
-      ■	Resource group: rg-vmmon-setup
-      ■	Alert rule name: alert-vmmon-vm-health
-      ■	Alert rule description: vm-vmmon-01 no está en servicio
-Captura: “07_02_03.alert-vmmon-vm-health(details).png”
-
-7.3. Alerta inicio de sesión fallidos
+7.2. Alerta inicio de sesión fallidos
   ●	Portal → Log Analytics Workspace → law-vmmon-setup → Monitoring → Alerts → Create → Alert rule
     ○	Scope: law-vmmon-setup (al crearlo desde el menú de log analytics workspace se autocompleta)
     ○	Condition: Custom log search
@@ -279,22 +252,38 @@ Captura: “07_02_03.alert-vmmon-vm-health(details).png”
       ■	Number of violations: 1
       ■	Evaluation period: 5 minutes (1 aggregated points)
       ■	Override query time range: 5 minutes
-Captura: “07_03_01.alert-vmmon-law-critical-events(condition).png”
+Captura: “07_02_01.alert-vmmon-law-critical-events(condition).png”
     ○	Actions
       ■	Action group name: ag-vmmon-alerts
-Captura: “07_03_02.alert-vmmon-law-critical-events(actions).png”
+Captura: “07_02_02.alert-vmmon-law-critical-events(actions).png”
     ○	Details
       ■	Subscription: Tu subscripción
       ■	Resource group: rg-vmmon-setup
-      ■	Severity 2 - Warning
-      ■	Alert rule name: alert-vmmon-law-critical-events
+      ■	Severity 0 - Critical
+      ■	Alert rule name: alert-vmmon-critical-events
       ■	Alert rule description: 5 inicios de sesión fallidos en vm-vmmon-01
-Captura: “07_03_03.alert-vmmon-law-critical-events(actions).png”
+Captura: “07_02_03.alert-vmmon-law-critical-events(actions).png”
+
+7.2. Alerta VM Deallocated
+  ●	Portal → Virtual machines → vm-vmmon-01 → Monitoring → Alerts → Create → Alert rule.
+    ○	Scope: vm-vmmon-01 (al crearlo desde el menú de máquinas virtuales se autocompleta)
+    ○	Condition
+      ■	Signal name: Deallocate Virtual Machine (Virtual Machines)
+Captura: “07_03_01.alert-vmmon-vm-deallocate(condition).png”
+    ○	Actions
+      ■	Select action group: ag-vmmon-alerts
+Captura: “07_02_02.alert-vmmon-vm-deallocate(actions).png”
+    ○	Details
+      ■	Subscription: Tu subscripción
+      ■	Resource group: rg-vmmon-setup
+      ■	Alert rule name: alert-vmmon-vm-deallocate
+      ■	Alert rule description: Se han detectado 5 inicios de sesión fallidos en vm-vmmon-01
+Captura: “07_02_03.alert-vmmon-vm-deallocate(details).png”
   
 8. Probar las alertas
 8.1. Alerta métrica CPU alta
   Accede a la vm y desde PowerShell ejecutado como administrador lanza el script “cpu-stress.ps1”(carpeta scripts). Espera 5 minutos.
-8.2. Alerta Resource Health
+8.2. Alerta Deallocated
   Apaga la máquina virtual (Stop) desde el portal de Azure
 8.3. Alerta inicio de sesión fallidos
   Accede a la máquina virtual a través de RDP y escribe usuario/contraseña de forma incorrecta 5 veces.

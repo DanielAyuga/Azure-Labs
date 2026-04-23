@@ -96,7 +96,7 @@ resource "azurerm_monitor_action_group" "ag" {
 
 # CPU Alert
 resource "azurerm_monitor_metric_alert" "cpu_high" {
-  name                = "${var.vm_name}-cpu-high"
+  name                = "alert-${var.vm_name}-cpu-high"
   resource_group_name = var.rg_name
   scopes              = [var.vm_id]
   description         = "CPU usage above 80%"
@@ -118,8 +118,8 @@ resource "azurerm_monitor_metric_alert" "cpu_high" {
 }
 
 # Failed Logins Alert
-resource "azurerm_monitor_scheduled_query_rules_alert" "failed_logins" {
-  name                = "${var.vm_name}-failed-logins"
+resource "azurerm_monitor_scheduled_query_rules_alert" "critical_events" {
+  name                = "alert-${var.vm_name}-critical-events"
   resource_group_name = var.rg_name
   location            = var.location
   description         = "Detects 5 failed login attempts in 5 minutes"
@@ -154,38 +154,21 @@ resource "azurerm_monitor_scheduled_query_rules_alert" "failed_logins" {
   }
 }
 
-# Heartbeat Alert
-resource "azurerm_monitor_scheduled_query_rules_alert" "vm_powerstate" {
-  name                = "${var.vm_name}-powerstate"
+resource "azurerm_monitor_activity_log_alert" "vm_deallocate" {
+  name                = "alert-${var.vm_name}-deallocate"
   resource_group_name = var.rg_name
-  location            = var.location
-  description         = "Detects if the VM stops sending Heartbeat"
-  severity            = 2
+  location            = "global"
+  scopes              = [var.vm_id]
+  description         = "The VM has been deallocated (stopped)."
   enabled             = true
 
-  depends_on = [
-  azurerm_monitor_data_collection_rule.dcr,
-  time_sleep.wait_for_law
-]
-
-  frequency   = 5
-  time_window = 5
-
-  query = <<-EOF
-  Heartbeat
-  | summarize LastSeen = max(TimeGenerated)
-  | extend MinutesSince = datetime_diff('minute', now(), LastSeen)
-  | where MinutesSince > 5
-  EOF
-
-  data_source_id = azurerm_log_analytics_workspace.law.id
-
-  trigger {
-    operator  = "GreaterThan"
-    threshold = 0
+  criteria {
+    category       = "Administrative"
+    operation_name = "Microsoft.Compute/virtualMachines/deallocate/action"
+    status         = "Succeeded"
   }
 
   action {
-    action_group = [azurerm_monitor_action_group.ag.id]
+    action_group_id = azurerm_monitor_action_group.ag.id
   }
 }
