@@ -264,7 +264,7 @@ Captura: “07_02_02.alert-vmmon-law-critical-events(actions).png”
       ■	Alert rule description: 5 inicios de sesión fallidos en vm-vmmon-01
 Captura: “07_02_03.alert-vmmon-law-critical-events(actions).png”
 
-7.2. Alerta VM Deallocated
+7.3. Alerta VM Deallocated
   ●	Portal → Virtual machines → vm-vmmon-01 → Monitoring → Alerts → Create → Alert rule.
     ○	Scope: vm-vmmon-01 (al crearlo desde el menú de máquinas virtuales se autocompleta)
     ○	Condition
