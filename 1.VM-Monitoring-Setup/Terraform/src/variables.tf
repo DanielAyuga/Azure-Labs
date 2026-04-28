@@ -35,6 +35,7 @@ variable "nic_name" {
 
 variable "my_public_ip" {
   type        = string
+  sensitive = true
 }
 
 variable "vm_name" {

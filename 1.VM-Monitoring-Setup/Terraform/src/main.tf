@@ -30,7 +30,7 @@ module "compute" {
 
   nic_name       = var.nic_name
   vm_name        = var.vm_name
-
+  
   admin_username = var.admin_username
   admin_password = var.admin_password
   

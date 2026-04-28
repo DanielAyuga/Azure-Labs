@@ -5,3 +5,8 @@ output "resource_group_name" {
 output "resource_group_location" {
   value = module.resource_group.rg_location
 }
+
+output "log_analytics_id" {
+  value = module.monitoring.law_id
+
+}

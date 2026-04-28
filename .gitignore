@@ -25,3 +25,6 @@ secrets.tfvars
 *.swp
 .DS_Store
 Thumbs.db
+
+*edge*
+*registry.terraform.io*

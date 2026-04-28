@@ -2,64 +2,84 @@
   "version": "Notebook/1.0",
   "items": [
     {
-      "type": 1,
+      "type": 3,
       "content": {
-        "json": {
-          "version": "KqlItem/1.0",
-          "query": "Heartbeat\n| summarize LastSeen = max(TimeGenerated)",
-          "title": "VM Heartbeat",
-          "visualization": "table",
-          "resourceIds": ["${law_id}"]
-        }
-      }
+        "version": "KqlItem/1.0",
+        "query": "Heartbeat\n| summarize LastSeen = max(TimeGenerated)",
+        "size": 4,
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "resourceIds": ["${law_id}"]
+      },
+      "name": "query - 0"
     },
     {
-      "type": 1,
+      "type": 3,
       "content": {
-        "json": {
-          "version": "KqlItem/1.0",
-          "query": "Perf\n| where CounterName == \"% Processor Time\"\n| summarize AvgCPU = avg(CounterValue) by bin(TimeGenerated, 5m)",
-          "title": "CPU Usage (5m avg)",
-          "visualization": "linechart",
-          "resourceIds": ["${law_id}"]
-        }
-      }
+        "version": "KqlItem/1.0",
+        "query": "Perf\n| where CounterName == \"% Processor Time\"\n| summarize AvgCPU = avg(CounterValue) by bin(TimeGenerated, 5m)",
+        "size": 0,
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "linechart",
+        "resourceIds": ["${law_id}"]
+      },
+      "name": "query - 1"
     },
     {
-      "type": 1,
+      "type": 3,
       "content": {
-        "json": {
-          "version": "KqlItem/1.0",
-          "query": "Perf\n| where CounterName == \"Available Bytes\"\n| extend AvailableMB = todouble(CounterValue) / 1000000.0\n| summarize AvgAvailableMB = avg(AvailableMB) by bin(TimeGenerated, 5m)\n| extend AvgAvailableMB = round(AvgAvailableMB, 2)",
-          "title": "Available Memory (MB)",
-          "visualization": "linechart",
-          "resourceIds": ["${law_id}"]
-        }
-      }
+        "version": "KqlItem/1.0",
+        "query": "Perf\n| where CounterName == \"Available Bytes\"\n| extend AvailableMB = todouble(CounterValue) / 1000000.0\n| summarize AvgAvailableMB = avg(AvailableMB) by bin(TimeGenerated, 5m)\n| extend AvgAvailableMB = round(AvgAvailableMB, 2)\n| render timechart with (ytitle=\"Available (MBytes)\")",
+        "size": 0,
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "resourceIds": ["${law_id}"]
+      },
+      "name": "query - 2"
     },
     {
-      "type": 1,
+      "type": 3,
       "content": {
-        "json": {
-          "version": "KqlItem/1.0",
-          "query": "Perf\n| where CounterName == \"% Free Space\"\n| summarize AvgFree = avg(CounterValue) by InstanceName",
-          "title": "Disk Free Space (%)",
-          "visualization": "barchart",
-          "resourceIds": ["${law_id}"]
-        }
-      }
+        "version": "KqlItem/1.0",
+        "query": "Perf\n| where CounterName == \"% Free Space\"\n| summarize AvgFree = avg(CounterValue) by InstanceName",
+        "size": 0,
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "barchart",
+        "resourceIds": ["${law_id}"]
+      },
+      "name": "query - 3"
     },
     {
-      "type": 1,
+      "type": 3,
       "content": {
-        "json": {
-          "version": "KqlItem/1.0",
-          "query": "Event\n| where EventLevelName in (\"Warning\", \"Error\", \"Critical\")\n| summarize count() by EventLevelName",
-          "title": "Critical & Warning Events",
-          "visualization": "piechart",
-          "resourceIds": ["${law_id}"]
-        }
-      }
+        "version": "KqlItem/1.0",
+        "query": "Event\n| where EventID in (4624, 4625)\n| summarize Count = count() by Status = case(EventID == 4624, \"Correctos\", \"Fallidos\")",
+        "size": 0,
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "resourceIds": ["${law_id}"]
+      },
+      "name": "query - 4"
     }
+  ],
+  "fallbackResourceIds": [
+    "${law_id}"
   ]
 }

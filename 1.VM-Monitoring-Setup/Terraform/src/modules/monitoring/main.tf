@@ -68,19 +68,6 @@ resource "azurerm_monitor_data_collection_rule" "dcr" {
   }
 }
 
-# Workbook
-resource "azurerm_application_insights_workbook" "vm_workbook" {
-  name                = uuid()
-  resource_group_name = var.rg_name
-  location            = var.location
-  display_name        = var.vm_workbook_name
-  category            = "workbook"
-
-  data_json = templatefile("${path.module}/workbook.json", {
-    law_id = azurerm_log_analytics_workspace.law.id
-  })
-}
-
 # Action Group
 resource "azurerm_monitor_action_group" "ag" {
   name                = var.action_group_name

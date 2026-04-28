@@ -1,4 +1,7 @@
-#Variables de "resource group"
+subscription_id = "XXXXXXXX"
+tenant_id       = "XXXXXXXX"
+
+Variables de "resource group"
 rg_name      = "rg-vmmon-setup"
 
 #Variables de "networking"

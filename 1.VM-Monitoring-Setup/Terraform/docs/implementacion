@@ -1,1 +1,275 @@
+Terraform-VM-Monitoring-Setup
+1.	Objetivo del proyecto
+Este laboratorio despliega en Azure a través de Terraform una arquitectura completa de monitorización para máquinas virtuales Windows en Azure utilizando:
+•	Azure Monitor Agent (AMA)
+•	Data Collection Rules (DCR)
+•	Log Analytics Workspace
+•	Alertas basadas en métricas y consultas KQL
+•	Action Groups
+•	Workbooks 
+**IMPORTANTE**
+**En este documento no se muestra el código desplegado, se explica estructura del proyecto, recursos creados y dependencias** 
+**Para ampliar información del código y comprender la estructura al completo se recomienda ver el vídeo del laboratorio en Youtube**
+2.	Estructura del repositorio
+/Terraform (nivel 0)
+  /src (nivel 1)
+    providers.tf
+    terraform.tfvars
+    variables.tf
+    main.tf
+    outputs.tf
+    workbook.tf
+    /modules (nivel 2)
+      /networking (nivel 3)
+        main.tf
+        variables.tf
+        outputs.tf
+      /compute (nivel 3)
+        main.tf
+        variables.tf
+        outputs.tf
+      /monitoring (nivel 3)
+        main.tf
+        variables.tf
+        outputs.tf
+        workbook.json
+.gitignore (nivel 0)
+3. SRC
+3.1 Providers.tf
+•	Define el proveedor azurerm y su versión, garantizando que Terraform use un conjunto estable de funcionalidades.
+•	Configura la conexión a Azure, indicando en qué suscripción se desplegarán los recursos (subscription_id) y en qué tenant se autentica el usuario o service principal (tenant_id). 
+•	El bloque features {} es obligatorio aunque esté vacío, porque activa internamente las capacidades del proveedor.
+3.2 Terraform.tfvars
+•	Proporciona los valores concretos para todas las variables que se pasarán a variables.tf y que usarán cada uno de los módulos, como nombres de VNET, subred, NSG, NIC, VM, Log Analytics Workspace y action group.
+•	Incluye credenciales y valores sensibles, como la contraseña del administrador y la IP pública, que deben mantenerse fuera del repositorio Git.
+•	Permite separar la lógica del código de los valores específicos, facilitando reutilización, limpieza y seguridad.
+3.3 Variables.tf
+•	Declara todas las variables que el root module recibirá desde terraform.tfvars, como nombres de recursos, región, credenciales y parámetros de monitorización.
+•	Incluye identificadores de Azure (subscription_id, tenant_id) necesarios para que el proveedor sepa dónde desplegar y en qué tenant autenticarse. 
+•	Define parámetros de red y compute, como nombres de VNET, subred, NSG, NIC y VM.
+•	Incluye valores para el módulo de monitorización, como nombres del Log Analytics Workspace, Data Collection Rule, workbook y action group.
+•	Marca como sensibles (sensitive = true) las variables que contienen información crítica, como contraseñas o direcciones IP públicas, para evitar que Terraform las muestre en el plan o en los logs.
+3.4 Main.tf
+•	Invoca cada módulo de la infraestructura: resource group, networking, compute y monitoring.
+•	Pasa a cada módulo las variables que necesita, ya sea desde terraform.tfvars->variables.tf o desde los outputs de otros módulos.
+•	Conecta los módulos entre sí, por ejemplo, pasando el subnet_id del módulo networking al módulo compute, o el vm_id del módulo compute al módulo monitoring.
+•	Define dependencias explícitas (como depends_on) para garantizar que ciertos módulos se desplieguen en el orden correcto.
+•	Construye el grafo de dependencias completo, que Terraform usa para determinar qué crear primero, qué crear después y qué puede crearse en paralelo.
+3.5 Outputs.tf
+•	Este archivo expone valores generados por los módulos, como el nombre y la ubicación del grupo de recursos.
+•	Los outputs permiten que Terraform muestre esta información al finalizar el despliegue, facilitando la verificación y depuración, evitando que el usuario o herramientas externas obtengan datos clave sin revisar el estado o el código.
+•	En proyectos más grandes, los outputs permiten encadenar infraestructuras entre sí, por ejemplo: un proyecto crea una red y otro la consume.
+3.6 Workbook.tf
+Despliega un Workbook basado en tu plantilla JSON.
+El Workbook muestra:
+•	Heartbeat
+•	CPU (promedio 5 minutos)
+•	Memoria disponible
+•	Espacio libre en disco
+•	Eventos 4624 y 4625 (inicios de sesión validos y fallidos)
+Todo en visualizaciones listas para usar en Azure Portal.
+
+4. Módulos
+4.1 Módulo Resource-group
+4.1.1 Main.tf
+Este módulo define la creación del grupo de recursos que servirá como contenedor principal para toda la infraestructura. Recibe el nombre y la región desde el root module y garantiza que todos los recursos posteriores se desplieguen dentro de este mismo ámbito.
+Recurso desplegado:
+•	Grupo de recursos
+4.1.2 Variables.tf
+Este archivo declara las variables que necesita el módulo para crear el grupo de recursos, concretamente el nombre y la región. Esto permite que el módulo sea reutilizable y que el root module controle dónde y cómo se despliega el recurso.
+4.1.3 Outputs.tf
+Este archivo expone el nombre y la ubicación del grupo de recursos para que el root module pueda utilizarlos al invocar otros módulos. Permite que la información generada dentro del módulo sea accesible desde fuera sin duplicar valores ni hardcodearlos.
+
+4.2 Módulo Networking
+4.2.1 Main.tf
+Este módulo crea 4 recursos de red:
+1.	Virtual Network (VNET)
+o	Espacio de direcciones: 10.0.0.0/24
+o	Actúa como red principal del entorno.
+2.	Subnet
+o	Prefijo: 10.0.0.0/26
+o	Donde se conectará la NIC de la VM.
+3.	Network Security Group (NSG)
+o	Controla el tráfico de entrada y salida de la NIC.
+4.	Regla NSG “Allow-My-IP”
+o	Permite tráfico entrante solo desde tu IP pública.
+o	Aumenta la seguridad evitando accesos desde Internet.
+4.2.2 Variables.tf
+Este archivo declara todas las variables necesarias para que el módulo de red pueda crear la VNet, la subred, el NSG y la regla de seguridad. Permite que el módulo sea completamente reutilizable, ya que recibe desde el root module los nombres de los recursos, la región y la IP pública autorizada.
+4.2.3 Outputs.tf
+Este archivo expone los identificadores de la VNet, la subred y el NSG creados por el módulo. Estos valores son esenciales para que otros módulos, como compute, puedan conectar la máquina virtual a la red y aplicar las reglas de seguridad correspondientes.
+
+4.3 Módulo compute
+4.3.1 Main.tf
+Este módulo crea 7 recursos clave:
+1. Máquina Virtual Windows (azurerm_windows_virtual_machine)
+•	VM Windows Server 2022
+•	Tamaño: Standard_B2s
+•	Disco OS administrado
+•	Identidad administrada del tipo SystemAssigned
+•	Conectada a la NIC creada en este módulo
+2. Extensión “wait_for_boot” (CustomScriptExtension)
+•	Ejecuta un delay de 180 segundos
+•	Garantiza que la VM esté completamente inicializada antes de instalar el AMA
+•	Evita fallos típicos de extensiones que se ejecutan demasiado pronto
+3. Extensión AMA (Azure Monitor Agent)
+•	Instala el agente de monitorización en la VM
+•	Necesario para enviar métricas y logs a Log Analytics
+•	Depende explícitamente de la extensión de espera
+4. Asociación de la VM con la Data Collection Rule (DCR)
+•	Conecta la VM con la DCR proporcionada por el módulo de monitoring
+•	Permite enviar logs del sistema, eventos de seguridad y métricas
+5. Network Interface (NIC)
+•	Conectada a la subred del módulo networking
+•	Asocia la IP pública
+•	Será la interfaz principal de la VM
+6. Public IP (PIP)
+•	IP pública estática
+•	SKU Standard
+•	Necesaria para RDP y para la regla NSG que permite tu IP
+7. Asociación NIC–NSG
+•	Aplica el NSG del módulo networking a la NIC
+•	Garantiza que solo tu IP pública pueda acceder a la VM
+4.3.2 Variables.tf
+Este archivo declara todas las variables que necesita el módulo de compute para crear la máquina virtual, su red asociada y la integración con la monitorización. Permite que el módulo sea completamente reutilizable, ya que recibe desde el root module los IDs de red, la DCR, los nombres de los recursos y las credenciales de la VM.
+4.3.3 Outputs.tf
+Este archivo expone los valores clave generados por el módulo de compute, como el ID de la máquina virtual, la IP pública y la NIC. Estos outputs permiten que el root module o herramientas externas puedan consultar información esencial del despliegue sin acceder directamente al estado de Terraform.
+
+4.4 Módulo monitoring
+4.4.1 Main.tf
+1. Log Analytics Workspace (LAW)
+•	Almacena métricas, eventos y logs enviados por la VM.
+2. Espera controlada para LAW (time_sleep.wait_for_law)
+•	Pausa de 30 segundos para asegurar que el workspace esté completamente aprovisionado antes de crear la DCR.
+3. Espera controlada para AMA (time_sleep.wait_for_ama)
+•	Pausa de 45 segundos para garantizar que la extensión AMA esté instalada en la VM antes de asociarla a la DCR.
+4. Data Collection Rule (DCR)
+•	Define qué datos se recopilan de la VM:
+o	Eventos de Windows (Application, System, Security 4624/4625)
+o	Métricas de rendimiento (CPU, memoria, disco)
+o	Heartbeat
+•	Envía todos los datos al Log Analytics Workspace.
+5. Workbook de monitorización
+•	Dashboard visual para analizar:
+o	CPU
+o	Memoria
+o	Disco
+o	Eventos de seguridad
+o	Heartbeat
+•	Se genera a partir de una plantilla JSON incluida en el módulo.
+6. Action Group
+•	Define el destino de las alertas.
+•	Incluye un receptor de correo electrónico.
+7. Alerta de CPU alta (Metric Alert)
+•	Detecta CPU > 80% durante 5 minutos.
+•	Frecuencia de evaluación: 1 minuto.
+•	Envía notificación al Action Group.
+8. Alerta de intentos fallidos de inicio de sesión (Scheduled Query Alert)
+•	Detecta ≥ 5 eventos 4625 en 5 minutos.
+•	Basada en consulta KQL sobre el LAW.
+•	Envía notificación al Action Group.
+9. Alerta de VM detenida (Activity Log Alert)
+•	Detecta la operación: Microsoft.Compute/virtualMachines/deallocate/action
+•	Se activa cuando la VM se detiene desde Azure Portal o ARM.
+•	Envía notificación al Action Group.
+4.4.2 Variables.tf
+Este archivo declara todas las variables necesarias para que el módulo de monitorización pueda crear el Log Analytics Workspace, la Data Collection Rule, el Workbook, el Action Group y las alertas asociadas. Recibe desde el root module los nombres de los recursos, la información de la VM y los identificadores necesarios para vincular la monitorización con la máquina virtual.
+4.4.3 Outputs.tf
+Este archivo expone los identificadores del Log Analytics Workspace y de la Data Collection Rule. Estos valores son esenciales para que otros módulos, como compute, puedan asociar la máquina virtual al sistema de monitorización sin duplicar información ni acceder directamente al estado de Terraform.
+4.4.4 Workbook.json
+El Workbook incluye 5 paneles visuales, cada uno basado en una consulta KQL distinta:
+1. Heartbeat — Última vez que la VM estuvo activa
+•	Consulta la tabla Heartbeat.
+•	Muestra la última marca temporal en la que la VM envió señal.
+•	Visualización: tabla.
+•	Útil para confirmar si la VM está viva y reportando datos.
+2. CPU Usage (promedio 5 minutos)
+•	Consulta la tabla Perf filtrando el contador % Processor Time.
+•	Calcula el promedio cada 5 minutos.
+•	Visualización: línea temporal.
+•	Permite ver picos de carga y tendencias de uso.
+3. Available Memory (MB)
+•	Consulta Perf filtrando Available Bytes.
+•	Convierte bytes a MB y calcula el promedio cada 5 minutos.
+•	Visualización: línea temporal.
+•	Muestra la memoria disponible en la VM.
+4. Disk Free Space (%)
+•	Consulta Perf filtrando % Free Space.
+•	Agrupa por disco (InstanceName).
+•	Visualización: barras.
+•	Permite ver el espacio libre por volumen.
+5. Critical & Warning Events
+•	Consulta la tabla Event.
+•	Filtra eventos Warning, Error y Critical.
+•	Cuenta cuántos hay de cada tipo.
+•	Visualización: gráfico circular.
+•	Útil para detectar problemas del sistema.
+
+5. Flujo de monitorización
+5.1 La VM arranca y envía señales iniciales
+Cuando la máquina virtual Windows se despliega:
+•	Se crea la VM con identidad administrada.
+•	La extensión wait_for_boot introduce una pausa de 180 segundos para garantizar que el sistema operativo esté completamente iniciado.
+•	Una vez estable, la VM empieza a generar:
+o	Heartbeat
+o	Métricas de rendimiento
+o	Eventos del sistema
+Pero todavía no se envían a Log Analytics, porque falta el agente.
+5.2 Instalación del Azure Monitor Agent (AMA)
+El módulo compute instala la extensión:
+•	AzureMonitorWindowsAgent (AMA)
+•	Esta extensión es la responsable de enviar:
+o	Métricas
+o	Eventos
+o	Heartbeat
+o	Logs de seguridad
+El módulo monitoring incluye un time_sleep adicional para asegurarse de que AMA está completamente instalado antes de asociar la DCR.
+5.3 Creación del Log Analytics Workspace (LAW)
+El módulo monitoring crea:
+•	Un Log Analytics Workspace
+•	Retención: 30 días
+•	SKU: PerGB2018
+Este workspace será el destino de todos los datos de monitorización.
+Se añade una espera de 30 segundos para garantizar que el LAW está totalmente aprovisionado antes de usarlo.
+5.4 Creación de la Data Collection Rule (DCR)
+La DCR define qué datos se recogen y a dónde se envían.
+La DCR recopila:
+•	Eventos de Windows
+o	Application (errores y críticos)
+o	System (errores y críticos)
+o	Security (4624, 4625)
+•	Métricas de rendimiento
+o	CPU
+o	Memoria
+o	Disco
+•	Heartbeat
+La DCR envía todo al:
+•	Log Analytics Workspace
+5.5 Asociación de la VM a la DCR
+El módulo compute crea:
+•	azurerm_monitor_data_collection_rule_association
+Esto vincula la VM con la DCR, permitiendo que AMA envíe datos al LAW.
+A partir de este punto:
+✔ La VM empieza a enviar métricas ✔ La VM empieza a enviar eventos ✔ La VM empieza a enviar heartbeat ✔ La VM empieza a enviar logs de seguridad
+5.6 Creación del Action Group
+El módulo monitoring crea un Action Group con:
+•	Un receptor de correo electrónico
+•	Es el destino de todas las alertas
+5.7 Creación de alertas
+El módulo monitoring define tres alertas complementarias:
+5.7.1. Alerta de CPU alta
+•	Métrica: Percentage CPU
+•	Condición: > 80% durante 5 minutos
+•	Frecuencia: cada 1 minuto
+•	Acción: enviar correo
+5.7.2. Alerta de intentos fallidos de inicio de sesión
+•	Basada en consulta KQL
+•	Detecta ≥ 5 eventos 4625 en 5 minutos
+•	Acción: enviar correo
+5.7.3. Alerta de VM detenida
+•	Basada en Activity Log
+•	Detecta la operación: Microsoft.Compute/virtualMachines/deallocate/action
+•	Acción: enviar correo
+5.8 Resumen del flujo
+VM → AMA → DCR → LAW → Workbook → Alertas → Action Group (correo)
 
