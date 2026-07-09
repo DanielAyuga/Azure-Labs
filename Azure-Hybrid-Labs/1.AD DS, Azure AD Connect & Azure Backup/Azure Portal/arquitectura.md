@@ -91,32 +91,32 @@ Configurar NICs con IP estática EN DC01 y SRV01 y regla NSG de subnet-cloud par
 4.Crear carpeta de demo para backup
 Crear C:\Departamentos\Finanzas.
 
-4. Configurar VPN S2S entre las dos VNets
-    1.	Crear VPN Gateway en vnet-onprem
-        o	Nombre: gw-onprem
-        o	Tipo: VPN
-        o	SKU: VpnGw1 (o similar)
-        o	Subred: GatewaySubnet (10.10.0.128/26)
-En un entorno real, el gateway on prem no es un Azure VPN Gateway, sino un router o firewall físico/virtual que se configura manualmente con la IP pública del Azure VPN Gateway, las redes internas de Azure y la clave compartida. El extremo de Azure es exactamente igual que en este laboratorio.
+4. Configurar VPN S2S entre las dos VNets  
+    1.	Crear VPN Gateway en vnet-onprem  
+        o	Nombre: gw-onprem  
+        o	Tipo: VPN  
+        o	SKU: VpnGw1 (o similar)  
+        o	Subred: GatewaySubnet (10.10.0.128/26)  
+En un entorno real, el gateway on prem no es un Azure VPN Gateway, sino un router o firewall físico/virtual que se configura manualmente con la IP pública del Azure VPN Gateway, las redes internas de Azure y la clave compartida. El extremo de Azure es exactamente igual que en este laboratorio.  
 
-    2.	Crear VPN Gateway en vnet-cloud
-        o	Nombre: gw-cloud
-        o	Tipo: VPN
-        o	SKU: VpnGw1
-        o	Subred: GatewaySubnet (10.20.0.128/26)
-Esperar a que ambos gateways se creen (tardan).
-    3.	Obtener las IP públicas de ambos gateways
-        o	gw-onprem → IP pública A
-        o	gw-cloud → IP pública B
-    4.	Crear Local Network Gateway para cada lado
-    •	En on prem:
-        o	Nombre: lng-onprem-cloud
-        o	IP pública: la de gw-cloud
-        o	Address space remoto: 10.20.0.0/24
-    •	En cloud:
-        o	Nombre: lng-cloud-onprem
-        o	IP pública: la de gw-onprem
-        o	Address space remoto: 10.10.0.0/24
+    2.	Crear VPN Gateway en vnet-cloud  
+        o	Nombre: gw-cloud  
+        o	Tipo: VPN  
+        o	SKU: VpnGw1  
+        o	Subred: GatewaySubnet (10.20.0.128/26)  
+Esperar a que ambos gateways se creen (tardan).  
+    3.	Obtener las IP públicas de ambos gateways  
+        o	gw-onprem → IP pública A  
+        o	gw-cloud → IP pública B  
+    4.	Crear Local Network Gateway para cada lado  
+    •	En on prem:  
+        o	Nombre: lng-onprem-cloud  
+        o	IP pública: la de gw-cloud  
+        o	Address space remoto: 10.20.0.0/24  
+    •	En cloud:  
+        o	Nombre: lng-cloud-onprem  
+        o	IP pública: la de gw-onprem  
+        o	Address space remoto: 10.10.0.0/24  
 
 5.	Crear conexión S2S en cada gateway
     •	En gw-onprem:
