@@ -29,7 +29,7 @@ jobs:
           terraform_version: 1.7.5
 
       - name: Azure Login (OIDC auto-detected)
-        uses: azure/login@v1
+        uses: azure/login@v2
         with:
           client-id: ${{ secrets.ARM_CLIENT_ID }}
           tenant-id: ${{ secrets.ARM_TENANT_ID }}
