@@ -2,7 +2,7 @@ Creación de Azure Landing Zone CAF Single Suscription (manualmente):
 
 1. Crear Management Groups “DaniCloudTech”  
 Debajo del MG Root crearemos el MG DaniCloudTech que será nuestro MG a nivel empresarial. 
-Pasos:
+Pasos:  
 •	mg-root → Add management group:  
 2. Mover la suscripción a “DaniCloudTech” 
 Muevo la suscripción a DaniCloudTech. 
