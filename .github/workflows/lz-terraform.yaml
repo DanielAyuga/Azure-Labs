@@ -13,12 +13,18 @@ permissions:
 
 jobs:
   terraform:
-    name: Terraform CI/CD - Landing Zone
+    name: "Terraform CI/CD - Landing Zone"
     runs-on: ubuntu-latest
 
     defaults:
       run:
         working-directory: "Azure Landing Zone CAF Single Suscription/Terraform/code"
+
+    env:
+      ARM_USE_OIDC: true
+      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
 
     steps:
       - name: Checkout repository
@@ -28,14 +34,6 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.7.5
-
-      - name: Debug GitHub OIDC claims
-        shell: bash
-        run: |
-          echo "Repository: $GITHUB_REPOSITORY"
-          echo "Repository ID: $GITHUB_REPOSITORY_ID"
-          echo "Repository Owner ID: $GITHUB_REPOSITORY_OWNER_ID"
-          echo "Ref: $GITHUB_REF"
 
       - name: Azure Login (OIDC)
         uses: azure/login@v2
