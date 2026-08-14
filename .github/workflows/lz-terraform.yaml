@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+
   pull_request:
 
 permissions:
@@ -27,15 +28,14 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.7.5
-          -name: Debug GitHub OIDC claims
-          shell: bash
-          run: |
-            echo "Repository: $GITHUB_REPOSITORY"
-            echo "Ref: $GITHUB_REF"
-            echo "Workflow: $GITHUB_WORKFLOW"
-            echo "Repository ID: $GITHUB_REPOSITORY_ID"
-            echo "Repository Owner ID: $GITHUB_REPOSITORY_OWNER_ID"
 
+      - name: Debug GitHub OIDC claims
+        shell: bash
+        run: |
+          echo "Repository: $GITHUB_REPOSITORY"
+          echo "Repository ID: $GITHUB_REPOSITORY_ID"
+          echo "Repository Owner ID: $GITHUB_REPOSITORY_OWNER_ID"
+          echo "Ref: $GITHUB_REF"
 
       - name: Azure Login (OIDC)
         uses: azure/login@v2
@@ -44,15 +44,11 @@ jobs:
           tenant-id: ${{ secrets.ARM_TENANT_ID }}
           subscription-id: ${{ secrets.ARM_SUBSCRIPTION_ID }}
 
-      - name: Verify Azure login
-        run: |
-          az account show
-
       - name: Terraform Init
-        run: terraform init -input=false
+        run: terraform init
 
       - name: Terraform Format
-        run: terraform fmt -check -recursive
+        run: terraform fmt -check
 
       - name: Terraform Validate
         run: terraform validate
@@ -61,5 +57,5 @@ jobs:
         run: terraform plan -input=false
 
       - name: Terraform Apply
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main'
         run: terraform apply -auto-approve -input=false
