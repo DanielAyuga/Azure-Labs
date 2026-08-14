@@ -252,7 +252,7 @@ resource "azapi_resource" "rg_networking_append_tag" {
       policyDefinitionId = local.append_tag_definition
       parameters = {
         tagName  = { value = "environment" }
-        tagValue = { value = "networking" }
+        tagValue = { value = "test" }
       }
     }
   })
