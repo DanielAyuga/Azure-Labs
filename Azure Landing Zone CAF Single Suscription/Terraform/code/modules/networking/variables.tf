@@ -7,22 +7,22 @@ variable "resource_group_name" {
 }
 
 variable "vnet_hub_name" {
-    type = string
+  type = string
 }
 
 variable "vnet_hub_address" {
-    type = string
+  type = string
 }
 
 variable "snet_bastion_name" {
-    type = string
+  type = string
 }
 
 variable "snet_bastion_address" {
-    type = string
+  type = string
 }
 
 variable "nsg_snet_bastion_name" {
-    type = string
+  type = string
 }
 

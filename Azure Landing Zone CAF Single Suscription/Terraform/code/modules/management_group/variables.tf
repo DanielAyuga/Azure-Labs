@@ -1,7 +1,7 @@
 variable "mg_name" {
-    type = string
+  type = string
 }
 
 variable "subscription_id" {
-    type = string
+  type = string
 }

@@ -7,7 +7,7 @@ variable "grp_platform_admin_id" {
 }
 
 variable "client_id" {
-    type = string
+  type = string
 }
 
 variable "management_group_id" {

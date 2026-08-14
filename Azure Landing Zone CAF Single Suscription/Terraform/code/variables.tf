@@ -1,23 +1,23 @@
 variable "client_id" {
-    type = string
+  type = string
 }
 
 variable "client_secret" {
-    type = string
+  type = string
 }
 
 variable "tenant_id" {
-    type = string
+  type = string
 }
 
 variable "subscription_id" {
-    type = string
+  type = string
 }
 
 
 #MG
 variable "mg_name" {
-    type = string
+  type = string
 }
 
 #RGs
@@ -38,33 +38,33 @@ variable "grp_platform_admin_id" {
 
 #Networking
 variable "vnet_hub_name" {
-    type = string
+  type = string
 }
 
 variable "vnet_hub_address" {
-    type = string
+  type = string
 }
 
 variable "snet_bastion_name" {
-    type = string
+  type = string
 }
 
 variable "snet_bastion_address" {
-    type = string
+  type = string
 }
 
 variable "nsg_snet_bastion_name" {
-    type = string
+  type = string
 }
 
 
 #Monitoring
 variable "law_name" {
-    type = string
+  type = string
 }
 
 
 #Security
 variable "kv_name" {
-    type = string
+  type = string
 }
